@@ -814,22 +814,42 @@ class Radial(CTFParser):
             i = i + 1
 
         # The following metadata must be defined.
-        if self.metadata['FileType'] and self.metadata['Site'] and self.metadata['TimeStamp'] and self.metadata['Origin'] and self.metadata['PatternType'] and self.metadata['TimeZone']:
-            filetime = dt.datetime(*map(int, self.metadata['TimeStamp'].split()))
-            i = i + 1
+        required_headers = [
+            'FileType',
+            'Site',
+            'TimeStamp',
+            'Origin',
+            'PatternType',
+            'TimeZone'
+        ]
+        n = 0
+        for req in required_headers:
+            if req not in self.metadata or not self.metadata[req]:
+                logger.warning(f'{req} not found in headers')
+            else:
+                n += 1
+        if n == len(required_headers):
+            i += 1
 
         # Filename timestamp must match the timestamp reported within the file.
+        if isinstance(self.metadata['TimeStamp'], str):
+            filetime = dt.datetime(*map(int, self.metadata['TimeStamp'].split()))
+        else:
+            filetime = self.metadata['TimeStamp']
+
         if timestr == filetime:
-            i = i + 1
+            i += 1
+        else:
+            logger.warning('Filename and TimeStamp metadata do not match')
 
         # Radial data table columns stated must match the number of columns reported for each row
         if len(self._tables['1']['TableColumnTypes'].split()) == self.data.shape[1]:
-            i = i + 1
+            i += 1
 
         # Make sure site location is within range: -180 <= lon <= 180 & -90 <= lat <= 90
         latlon = re.findall(r"[-+]?\d*\.\d+|\d+", self.metadata['Origin'])
         if (-180 <= float(latlon[1]) <= 180) & (-90 <= float(latlon[0]) <= 90):
-            i = i + 1
+            i += 1
 
         if i == 6:
             syntax = 1
